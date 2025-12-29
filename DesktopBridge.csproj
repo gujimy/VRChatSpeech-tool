@@ -1,0 +1,39 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <ApplicationIcon>ico.ico</ApplicationIcon>
+    <AssemblyName>VRChatSpeechAssistant</AssemblyName>
+    <RootNamespace>VRChatSpeechAssistant</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.2792.45" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Resource Include="ico.ico" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="vue-app\dist\**\*">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>dist\%(RecursiveDir)%(Filename)%(Extension)</Link>
+      <TargetPath>dist\%(RecursiveDir)%(Filename)%(Extension)</TargetPath>
+    </None>
+  </ItemGroup>
+  
+  <!-- 构建后任务：将 dist/vue-app/dist 内容移动到 dist -->
+  <Target Name="MoveDist" AfterTargets="Build">
+    <ItemGroup>
+      <DistFiles Include="$(OutputPath)dist\vue-app\dist\**\*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(DistFiles)" DestinationFolder="$(OutputPath)dist\%(RecursiveDir)" SkipUnchangedFiles="true" Condition="Exists('$(OutputPath)dist\vue-app\dist')" />
+    <RemoveDir Directories="$(OutputPath)dist\vue-app" Condition="Exists('$(OutputPath)dist\vue-app')" />
+  </Target>
+
+</Project>
