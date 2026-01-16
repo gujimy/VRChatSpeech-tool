@@ -11,7 +11,7 @@ export function useSpeechRecognition() {
   const lang = ref('zh-CN')
   
   let recognition = null
-  let stream = null
+  // let stream = null // 由 useMicrophone 统一管理
   let maxSensitivity = 0
   let sensitivityThreshold = 0
   let visibilityCheckInterval = null
@@ -40,14 +40,15 @@ export function useSpeechRecognition() {
 
   /**
    * 初始化音频灵敏度检测
-   * @param {string} deviceId - 音频设备ID
+   * @param {MediaStream} stream - 外部传入的音频流
    */
-  const initSensitivity = async (deviceId = 'default') => {
+  const initSensitivity = async (stream) => {
+    if (!stream) {
+      console.error('初始化灵敏度检测失败: 未提供 MediaStream')
+      return false
+    }
+    
     try {
-      const constraints = {
-        audio: deviceId === 'default' ? true : { deviceId: { exact: deviceId } }
-      }
-      stream = await navigator.mediaDevices.getUserMedia(constraints)
       const audioContext = new AudioContext()
       const mediaStreamAudioSourceNode = audioContext.createMediaStreamSource(stream)
       const analyserNode = audioContext.createAnalyser()
@@ -55,8 +56,7 @@ export function useSpeechRecognition() {
 
       const pcmData = new Float32Array(analyserNode.fftSize)
       const onFrame = () => {
-        if (!stream) return
-        
+        // 流的生命周期由外部管理，这里不再检查
         analyserNode.getFloatTimeDomainData(pcmData)
         let sumSquares = 0.0
         for (const amplitude of pcmData) {
@@ -318,10 +318,11 @@ export function useSpeechRecognition() {
       recognition.stop()
       recognition = null
     }
-    if (stream) {
-      stream.getTracks().forEach(track => track.stop())
-      stream = null
-    }
+    // 流的清理交由 useMicrophone 处理
+    // if (stream) {
+    //   stream.getTracks().forEach(track => track.stop())
+    //   stream = null
+    // }
   }
 
   // 组件卸载时清理

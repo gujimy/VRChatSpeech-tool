@@ -21,15 +21,16 @@ export function useAudioVisualizer() {
   
   /**
    * 初始化音频分析器
-   * @param {string} deviceId - 音频设备ID
+   * @param {MediaStream} stream - 外部传入的音频流
    */
-  const init = async (deviceId = 'default') => {
+  const init = async (stream) => {
+    if (!stream) {
+      console.error('初始化音频可视化失败: 未提供 MediaStream')
+      return false
+    }
+    
     try {
-      // 获取麦克风权限
-      const constraints = {
-        audio: deviceId === 'default' ? true : { deviceId: { exact: deviceId } }
-      }
-      mediaStream = await navigator.mediaDevices.getUserMedia(constraints)
+      mediaStream = stream
       
       // 创建音频上下文
       audioContext = new (window.AudioContext || window.webkitAudioContext)()

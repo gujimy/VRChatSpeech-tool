@@ -245,6 +245,7 @@ import { useHostBridge } from './composables/useHostBridge'
 import { useRecognitionResults } from './composables/useRecognitionResults'
 import { useAudioVisualizer } from './composables/useAudioVisualizer'
 import { useTranslation } from './composables/useTranslation'
+import { useMicrophone } from './composables/useMicrophone'
 import { useDebounce } from './composables/useDebounce'
 import TranslationSettings from './components/TranslationSettings.vue'
 import AppToolbar from './components/AppToolbar.vue'
@@ -260,6 +261,7 @@ const hostBridge = useHostBridge()
 const resultsManager = useRecognitionResults()
 const audioVisualizer = useAudioVisualizer()
 const translation = useTranslation()
+const microphone = useMicrophone()
 
 // 临时翻译结果
 const interimTranslation = ref('')
@@ -457,71 +459,114 @@ const getAudioDevices = async () => {
 
 // 处理音频设备切换
 const handleAudioDeviceChange = async (deviceId) => {
-  console.log('切换麦克风设备:', deviceId)
-  
+  console.log('🎤 切换麦克风设备:', deviceId)
   const wasRecognizing = recognition.isRecognizing.value
-  
+
   // 停止当前识别
   if (wasRecognizing) {
     recognition.stop()
   }
-  
-  // 重新初始化音频可视化
+
+  // 清理旧的模块
   audioVisualizer.cleanup()
-  await audioVisualizer.init(deviceId)
   
-  // 重新初始化语音识别的灵敏度检测
-  await recognition.initSensitivity(deviceId)
-  
-  // 如果之前在识别，重新启动
-  if (wasRecognizing) {
-    setTimeout(() => {
-      recognition.start()
-    }, 500)
+  try {
+    // 1. 统一获取新的音频流
+    const stream = await microphone.initMicrophone(deviceId)
+    
+    // 2. 使用新的音频流重新初始化依赖模块
+    await audioVisualizer.init(stream)
+    await recognition.initSensitivity(stream)
+    
+    // 3. 如果之前在识别，重新启动
+    if (wasRecognizing) {
+      setTimeout(() => {
+        recognition.start()
+      }, 200) // 减少延迟
+    }
+    
+    showSnackbar('已切换麦克风设备', 'success')
+  } catch (error) {
+    console.error('❌ 切换麦克风失败:', error)
+    showSnackbar(`切换麦克风失败: ${error.message}`, 'error')
   }
-  
-  showSnackbar('已切换麦克风设备', 'success')
 }
 
 // 初始化应用
 onMounted(async () => {
+  console.log('🚀 应用开始初始化...')
+  const startTime = performance.now()
+  let lastTime = startTime
+
+  const logPerf = (step) => {
+    const now = performance.now()
+    console.log(`[${step}] 耗时: ${(now - lastTime).toFixed(2)}ms | 总耗时: ${(now - startTime).toFixed(2)}ms`)
+    lastTime = now
+  }
+
   const savedSettings = localStorage.getItem('speech-settings')
   if (savedSettings) {
     Object.assign(settings.value, JSON.parse(savedSettings))
   }
-  
+  logPerf('加载本地设置')
+
   // 获取音频设备列表
   await getAudioDevices()
+  logPerf('获取音频设备')
 
   if (settings.value.ui.theme) {
-    // 更新为 Vuetify 3.4+ 的现代 API 以解决弃用警告
-    theme.name.value = settings.value.ui.theme;
+    theme.name.value = settings.value.ui.theme
   }
+  logPerf('设置主题')
 
-  const initialized = await recognition.init()
-  if (!initialized) {
-    showSnackbar('语音识别初始化失败', 'error')
+  // 初始化核心服务
+  const recognitionInitialized = await recognition.init()
+  if (!recognitionInitialized) {
+    showSnackbar('语音识别引擎初始化失败', 'error')
     return
   }
-
-  await recognition.initSensitivity(settings.value.audioDeviceId)
-  await audioVisualizer.init(settings.value.audioDeviceId)
+  logPerf('初始化 SpeechRecognition 引擎')
+  
   await translation.init()
+  logPerf('初始化翻译服务')
+
+  try {
+    // 统一获取麦克风流
+    const stream = await microphone.initMicrophone(settings.value.audioDeviceId)
+    logPerf('获取麦克风权限和音频流')
+
+    // 将流传递给依赖模块
+    await recognition.initSensitivity(stream)
+    logPerf('初始化识别灵敏度模块')
+    
+    await audioVisualizer.init(stream)
+    logPerf('初始化音频可视化模块')
+
+  } catch (error) {
+    showSnackbar(`麦克风初始化失败: ${error.message}`, 'error')
+    console.error('❌ 麦克风初始化流程失败:', error)
+    return
+  }
   
   if (settings.value.translationService && translation.availableServices.value.includes(settings.value.translationService)) {
     translation.setService(settings.value.translationService)
   }
+  logPerf('设置翻译服务')
 
   recognition.setupEvents(handleRecognitionResult, handleRecognitionError)
+  logPerf('设置识别事件')
 
   // WebView2 环境下自动连接
   hostBridge.connect()
+  logPerf('连接 Host Bridge')
 
-  setTimeout(() => {
-    if (recognition.status.value === '就绪') {
-      recognition.start()
-    }
-  }, 1000)
+  // 所有初始化完成后，立即启动识别
+  if (recognition.status.value === '就绪') {
+    recognition.start()
+  }
+  logPerf('启动识别')
+
+  console.log('✅ 应用初始化完成!')
 
   window.addEventListener('resize', () => {
     windowHeight.value = window.innerHeight
