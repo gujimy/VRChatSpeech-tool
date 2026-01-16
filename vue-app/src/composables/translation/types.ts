@@ -54,12 +54,12 @@ export interface LanguageMapping {
 
 // AI 提供商类型
 export type AIProvider =
-  | 'openai'      // OpenAI / OpenRouter / DeepSeek 等 OpenAI 兼容
-  | 'gemini'      // Google Gemini
-  | 'claude'      // Anthropic Claude
-  | 'ollama'      // Ollama 本地模型
-  | 'lm-studio'   // LM Studio 本地模型
-  | 'custom'      // 自定义端点
+  | 'custom'
+  | 'openai'
+  | 'gemini'
+  | 'claude'
+  | 'ollama'
+  | 'lm-studio'
 
 // AI 翻译配置
 export interface AITranslationConfig {

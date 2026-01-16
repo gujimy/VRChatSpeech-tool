@@ -194,36 +194,44 @@ export type TranslationService = typeof TRANSLATION_SERVICES[keyof typeof TRANSL
  * AI 提供商预设配置
  */
 export const AI_PROVIDER_PRESETS = {
+  custom: {
+    name: 'OpenAI 兼容 API',
+    baseURL: '',
+    defaultModel: '',
+    requiresKey: true,
+    icon: 'mdi-cog',
+    description: '兼容 OpenAI 的第三方 API (如 NVIDIA, Moonshot)'
+  },
   openai: {
     name: 'OpenAI',
     baseURL: 'https://api.openai.com/v1',
     defaultModel: 'gpt-4o-mini',
     requiresKey: true,
-    icon: '🤖',
-    description: '支持 OpenAI、OpenRouter、DeepSeek 等兼容接口'
+    icon: 'mdi-robot',
+    description: '官方 OpenAI 服务'
   },
   gemini: {
     name: 'Google Gemini',
     baseURL: 'https://generativelanguage.googleapis.com',
-    defaultModel: 'gemini-2.0-flash-exp',
+    defaultModel: 'gemini-1.5-flash',
     requiresKey: true,
-    icon: '✨',
+    icon: 'mdi-sparkles',
     description: 'Google 的多模态 AI 模型'
   },
   claude: {
     name: 'Anthropic Claude',
     baseURL: 'https://api.anthropic.com',
-    defaultModel: 'claude-sonnet-4-0',
+    defaultModel: 'claude-3-haiku-20240307',
     requiresKey: true,
-    icon: '🧠',
+    icon: 'mdi-brain',
     description: 'Anthropic 的高质量 AI 助手'
   },
   ollama: {
     name: 'Ollama',
     baseURL: 'http://localhost:11434/v1',
-    defaultModel: 'qwen2.5:latest',
+    defaultModel: '',
     requiresKey: false,
-    icon: '🦙',
+    icon: 'mdi-llama',
     description: '本地运行，无需 API Key'
   },
   'lm-studio': {
@@ -231,16 +239,8 @@ export const AI_PROVIDER_PRESETS = {
     baseURL: 'http://localhost:1234/v1',
     defaultModel: 'local-model',
     requiresKey: false,
-    icon: '💻',
+    icon: 'mdi-laptop',
     description: '本地运行，无需 API Key'
-  },
-  custom: {
-    name: '自定义',
-    baseURL: '',
-    defaultModel: '',
-    requiresKey: false,
-    icon: '⚙️',
-    description: '支持任何兼容 OpenAI 格式的 API'
   }
 } as const
 
