@@ -15,6 +15,11 @@ export function useSpeechRecognition() {
   let maxSensitivity = 0
   let sensitivityThreshold = 0
   let visibilityCheckInterval = null
+  
+  // 灵敏度检测资源
+  let sensitivityAudioContext = null
+  let sensitivityAnalyser = null
+  let sensitivityFrameId = null
 
   /**
    * 初始化语音识别
@@ -48,16 +53,20 @@ export function useSpeechRecognition() {
       return false
     }
     
+    // 先清理旧资源
+    cleanupSensitivity()
+    
     try {
-      const audioContext = new AudioContext()
-      const mediaStreamAudioSourceNode = audioContext.createMediaStreamSource(stream)
-      const analyserNode = audioContext.createAnalyser()
-      mediaStreamAudioSourceNode.connect(analyserNode)
+      sensitivityAudioContext = new AudioContext()
+      const mediaStreamAudioSourceNode = sensitivityAudioContext.createMediaStreamSource(stream)
+      sensitivityAnalyser = sensitivityAudioContext.createAnalyser()
+      mediaStreamAudioSourceNode.connect(sensitivityAnalyser)
 
-      const pcmData = new Float32Array(analyserNode.fftSize)
+      const pcmData = new Float32Array(sensitivityAnalyser.fftSize)
       const onFrame = () => {
-        // 流的生命周期由外部管理，这里不再检查
-        analyserNode.getFloatTimeDomainData(pcmData)
+        if (!sensitivityAnalyser) return
+        
+        sensitivityAnalyser.getFloatTimeDomainData(pcmData)
         let sumSquares = 0.0
         for (const amplitude of pcmData) {
           sumSquares += amplitude * amplitude
@@ -68,16 +77,33 @@ export function useSpeechRecognition() {
           maxSensitivity = currentSensitivity
         }
         
-        window.requestAnimationFrame(onFrame)
+        sensitivityFrameId = window.requestAnimationFrame(onFrame)
       }
-      window.requestAnimationFrame(onFrame)
+      sensitivityFrameId = window.requestAnimationFrame(onFrame)
       
       console.log('🎤 麦克风权限已获取')
       return true
     } catch (e) {
+      cleanupSensitivity()
       console.error('麦克风权限被拒绝或不可用:', e)
       return false
     }
+  }
+  
+  /**
+   * 清理灵敏度检测资源
+   */
+  const cleanupSensitivity = () => {
+    if (sensitivityFrameId) {
+      cancelAnimationFrame(sensitivityFrameId)
+      sensitivityFrameId = null
+    }
+    if (sensitivityAudioContext) {
+      sensitivityAudioContext.close()
+      sensitivityAudioContext = null
+    }
+    sensitivityAnalyser = null
+    maxSensitivity = 0
   }
 
   /**
@@ -313,16 +339,12 @@ export function useSpeechRecognition() {
    */
   const cleanup = () => {
     stopVisibilityCheck()
+    cleanupSensitivity()
     
     if (recognition) {
       recognition.stop()
       recognition = null
     }
-    // 流的清理交由 useMicrophone 处理
-    // if (stream) {
-    //   stream.getTracks().forEach(track => track.stop())
-    //   stream = null
-    // }
   }
 
   // 组件卸载时清理

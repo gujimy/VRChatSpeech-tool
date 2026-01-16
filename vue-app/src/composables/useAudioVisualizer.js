@@ -116,10 +116,8 @@ export function useAudioVisualizer() {
     isActive.value = false
     stopAnalysis()
     
-    if (mediaStream) {
-      mediaStream.getTracks().forEach(track => track.stop())
-      mediaStream = null
-    }
+    // 流的生命周期由 useMicrophone 统一管理，这里只清空引用
+    mediaStream = null
     
     if (audioContext) {
       audioContext.close()

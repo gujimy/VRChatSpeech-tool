@@ -462,27 +462,27 @@ const handleAudioDeviceChange = async (deviceId) => {
   console.log('🎤 切换麦克风设备:', deviceId)
   const wasRecognizing = recognition.isRecognizing.value
 
-  // 停止当前识别
+  // 1. 停止当前识别
   if (wasRecognizing) {
     recognition.stop()
   }
-
-  // 清理旧的模块
-  audioVisualizer.cleanup()
   
   try {
-    // 1. 统一获取新的音频流
+    // 2. 先获取新的音频流（在清理旧资源之前）
     const stream = await microphone.initMicrophone(deviceId)
     
-    // 2. 使用新的音频流重新初始化依赖模块
+    // 3. 清理旧的音频上下文（但不关闭流）
+    audioVisualizer.cleanup()
+    
+    // 4. 使用新流重新初始化依赖模块
     await audioVisualizer.init(stream)
     await recognition.initSensitivity(stream)
     
-    // 3. 如果之前在识别，重新启动
+    // 5. 如果之前在识别，重新启动
     if (wasRecognizing) {
       setTimeout(() => {
         recognition.start()
-      }, 200) // 减少延迟
+      }, 200)
     }
     
     showSnackbar('已切换麦克风设备', 'success')
